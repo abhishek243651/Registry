@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { useFormik } from "formik";
 import { getValidationSchema } from "../schema/AddUsersSchema";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import axios from "../apis";
 import toast from "react-hot-toast";
 import { STATES } from "../utils/constants";
-import { createUser } from "../apis/users";
+import { createUser, getUserById, updateUser } from "../apis/users";
 import { useAuth } from "../hooks/useAuth";
 import { getRegistries, getRoles } from "../apis/constant";
 import { confirmAlert, errorAlert, successAlert } from "../utils/swal";
 
 const AddUsers = () => {
   const { user, token } = useAuth();
+  const { id } = useParams();
+  console.log("ID PARAMS", id);
   const navigate = useNavigate();
 
   const [roles, setRoles] = useState([]);
@@ -28,51 +30,25 @@ const AddUsers = () => {
       is_active: true,
       department: "",
       level: user?.role === "super_admin" ? "centre" : "",
-      state: "",
+      stateName: "",
       registry: "",
     },
 
     // validationSchema,
     validationSchema: getValidationSchema(user),
-    // onSubmit: async (values, { resetForm, setSubmitting }) => {
-    //   try {
-    //     console.log("VALUES", values);
-    //     const response = await createUser(values, token);
-    //     console.log("RESPONSE", response);
-    //     if (response.success === true) {
-    //       resetForm();
-    //       navigate("/dashboard/users");
-    //     }
-    //   } catch (error) {
-    //     console.log(error);
-    // const backendMessage =
-    //   error?.response?.data?.message ||
-    //   error.message ||
-    //   "resource creation failed!";
-
-    // toast.error(backendMessage);
-    //   }
-    // },
 
     // onSubmit: async (values, { resetForm, setSubmitting }) => {
     //   try {
-    //     const result = await Swal.fire({
-    //       title: "Are you sure?",
-    //       text: "Do you really want to create this user?",
-    //       icon: "warning",
-    //       showCancelButton: true,
-    //       confirmButtonColor: "#198754", // Bootstrap success color
-    //       cancelButtonColor: "#d33",
+    //     const result = await confirmAlert({
+    //       title: "Create user?",
+    //       text: "Are you sure you want to create this user?",
     //       confirmButtonText: "Yes, create",
     //     });
 
     //     if (result.isConfirmed) {
-    //       console.log("VALUES", values);
     //       const response = await createUser(values, token);
-    //       console.log("RESPONSE", response);
-
-    //       if (response.success === true) {
-    //         Swal.fire("Success", "User created successfully", "success");
+    //       if (response.success) {
+    //         await successAlert("User Created", "user created successfully.");
     //         resetForm();
     //         navigate("/dashboard/users");
     //       }
@@ -83,9 +59,7 @@ const AddUsers = () => {
     //       error?.response?.data?.message ||
     //       error.message ||
     //       "resource creation failed!";
-
-    //     toast.error(backendMessage);
-    //     Swal.fire("Error", backendMessage, "error");
+    //     errorAlert("Failed", backendMessage);
     //   } finally {
     //     setSubmitting(false);
     //   }
@@ -94,25 +68,36 @@ const AddUsers = () => {
     onSubmit: async (values, { resetForm, setSubmitting }) => {
       try {
         const result = await confirmAlert({
-          title: "Create user?",
-          text: "Are you sure you want to create this user?",
-          confirmButtonText: "Yes, create",
+          title: id ? "Update user?" : "Create user?",
+          text: id
+            ? "Are you sure you want to update this user?"
+            : "Are you sure you want to create this user?",
+          confirmButtonText: id ? "Yes, update" : "Yes, create",
         });
 
-        if (result.isConfirmed) {
-          const response = await createUser(values, token);
-          if (response.success) {
-            await successAlert("User Created", "user created successfully.");
-            resetForm();
-            navigate("/dashboard/users");
-          }
+        if (!result.isConfirmed) return;
+
+        let response;
+        if (id) {
+          response = await updateUser(id, values, token);
+        } else {
+          response = await createUser(values, token);
+        }
+
+        if (response.success) {
+          await successAlert(
+            id ? "User Updated" : "User Created",
+            id ? "User updated successfully." : "User created successfully."
+          );
+          resetForm();
+          navigate("/dashboard/users");
         }
       } catch (error) {
-        console.log(error);
+        console.error(error);
         const backendMessage =
           error?.response?.data?.message ||
           error.message ||
-          "resource creation failed!";
+          (id ? "Failed to update user." : "Failed to create user.");
         errorAlert("Failed", backendMessage);
       } finally {
         setSubmitting(false);
@@ -157,9 +142,33 @@ const AddUsers = () => {
       (user?.role === "admin" && user?.level === "centre");
 
     if (shouldHideState) {
-      formik.setFieldValue("state", "");
+      formik.setFieldValue("stateName", "");
     }
   }, [user?.role, user?.level]);
+
+  useEffect(() => {
+    if (!id) return;
+    const loadData = async () => {
+      try {
+        const res = await getUserById(id, token);
+        const user = res?.data;
+        formik.setValues({
+          username: user?.username || "",
+          email: user?.email || "",
+          password_hash: "",
+          first_name: user?.first_name || "",
+          last_name: user?.last_name || "",
+          role_id: user?.role_id || "",
+          is_active: user?.is_active || "",
+          stateName: user?.stateName || "",
+          level: user?.level || "",
+        });
+      } catch (error) {
+        console.error("Failed to fetch user:", error);
+      }
+    };
+    loadData();
+  }, [id]);
 
   return (
     <div className="p-4">
@@ -283,7 +292,23 @@ const AddUsers = () => {
             <select
               name="level"
               className="form-select"
-              onChange={formik.handleChange}
+              // onChange={formik.handleChange}
+              onChange={(e) => {
+                const selectedLevel = e.target.value;
+                if (
+                  user?.role === "admin" &&
+                  user?.level === "centre" &&
+                  selectedLevel === "centre"
+                ) {
+                  errorAlert(
+                    "Not Allowed",
+                    "Centre admin cannot create centre admin."
+                  );
+                  return;
+                }
+
+                formik.setFieldValue("level", selectedLevel);
+              }}
               onBlur={formik.handleBlur}
               value={formik.values.level}
               disabled={user?.role === "super_admin"}
@@ -365,11 +390,11 @@ const AddUsers = () => {
                 Select State <span className="text-danger"> *</span> :
               </label>
               <select
-                name="state"
+                name="stateName"
                 className="form-select"
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                value={formik.values.state}
+                value={formik.values.stateName}
               >
                 <option value={""}>Select State</option>
                 {STATES.map((state, i) => (
@@ -378,8 +403,8 @@ const AddUsers = () => {
                   </option>
                 ))}
               </select>
-              {formik.touched.state && formik.errors.state && (
-                <div className="text-danger">{formik.errors.state}</div>
+              {formik.touched.stateName && formik.errors.stateName && (
+                <div className="text-danger">{formik.errors.stateName}</div>
               )}
             </div>
           ) : null}
@@ -459,12 +484,25 @@ const AddUsers = () => {
             &lt; Back
           </button>
 
-          <button
+          {/* <button
             type="submit"
             className="btn btn-success"
             disabled={formik.isSubmitting}
           >
             {formik.isSubmitting ? "Submitting..." : "Submit"}
+          </button> */}
+          <button
+            type="submit"
+            className="btn btn-success"
+            disabled={formik.isSubmitting}
+          >
+            {formik.isSubmitting
+              ? id
+                ? "Updating..."
+                : "Submitting..."
+              : id
+              ? "Update"
+              : "Submit"}
           </button>
         </div>
       </form>

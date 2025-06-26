@@ -26,3 +26,29 @@ export async function getUsers(token) {
     throw error;
   }
 }
+export async function getUserById(id, token) {
+  try {
+    const response = await axios.get(`/getAdminById/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.log("Error while creating", error);
+    throw error;
+  }
+}
+export async function updateUser(id, data, token) {
+  try {
+    const response = await axios.put(`/updateAdminById/${id}`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.log("Error while creating", error);
+    throw error;
+  }
+}

@@ -14,7 +14,7 @@ export const getValidationSchema = (user) =>
     level: Yup.string()
       .required("Level is required")
       .oneOf(["centre", "state"], "Invalid role"),
-    state: Yup.string()
+    stateName: Yup.string()
       .nullable()
       .test("state-required", "State is required", function (value) {
         const { role_id, level } = this.parent;

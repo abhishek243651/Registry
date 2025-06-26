@@ -5,13 +5,15 @@ import { CiTrash } from "react-icons/ci";
 import { FaRegEdit } from "react-icons/fa";
 import { IoIosAddCircleOutline } from "react-icons/io";
 import { IoSearchOutline } from "react-icons/io5";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import axios from "../apis";
 import { useAuth } from "../hooks/useAuth";
 import { getUsers } from "../apis/users";
+import { RiDeleteBin6Line } from "react-icons/ri";
 
 function Users() {
   const { token } = useAuth();
+
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [searchtxt, setSearchtxt] = useState("");
@@ -38,6 +40,10 @@ function Users() {
 
   const handleChange = (e) => {
     setSearchtxt(e.target.value);
+  };
+
+  const handleEdit = (id) => {
+    navigate(`/dashboard/edit-user/${id}`);
   };
 
   const handleDelete = async (id) => {
@@ -101,7 +107,6 @@ function Users() {
       <div className="mt-3">
         <div className="table-responsive">
           {loading ? (
-            // ✅ Bootstrap Spinner
             <div className="d-flex justify-content-center align-items-center py-5">
               <div className="spinner-border text-primary" role="status">
                 <span className="visually-hidden">Loading...</span>
@@ -127,21 +132,26 @@ function Users() {
                   <tr key={item?.user_details_id}>
                     <td>{index + 1}</td>
                     <td>
-                      {item.first_name} {item.last_name}
+                      {item?.first_name} {item?.last_name}
                     </td>
-                    <td>{item.role}</td>
-                    <td>{item.is_active ? "Active" : "Inactive"}</td>
+                    <td>
+                      {item?.role} {item?.level}
+                    </td>
+                    <td>{item?.created_by}</td>
+
+                    <td>{item?.is_active ? "Active" : "Inactive"}</td>
                     <td>
                       <span
                         className="me-2 text-danger"
                         style={{ cursor: "pointer" }}
                         onClick={() => handleDelete(item.id)}
                       >
-                        <CiTrash />
+                        <RiDeleteBin6Line />
                       </span>
                       <span
                         className="text-primary"
                         style={{ cursor: "pointer" }}
+                        onClick={() => handleEdit(item.user_details_id)}
                       >
                         <FaRegEdit />
                       </span>

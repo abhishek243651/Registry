@@ -26,6 +26,7 @@ function App() {
       >
         <Route path="users" element={<Users />} />
         <Route path="create-user" element={<AddUsers />} />
+        <Route path="edit-user/:id" element={<AddUsers />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

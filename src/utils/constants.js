@@ -1,4 +1,11 @@
-export const columnName = ["S.No", "Name", "Role", "Status", "Action"];
+export const columnName = [
+  "S.No",
+  "Name",
+  "Role",
+  "Created By ",
+  "Status",
+  "Action",
+];
 
 export function arrayIndex(item, id) {
   return `${item}-${id}`;
